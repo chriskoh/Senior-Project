@@ -1,0 +1,405 @@
+' {$STAMP BS2}
+' {$PBASIC 2.5}
+
+
+RX             PIN     13           'Bluetooth declerations
+TX             PIN     12
+Baud           CON     84
+HB25           PIN     15
+
+control        VAR     Word         'control variable
+
+counter VAR Byte                    'phase 1 declerations
+countertwo VAR Byte
+motor12 VAR Word
+motor13 VAR Word
+path VAR Byte
+phase1select VAR Word
+counter = 0
+countertwo = 0
+qtis VAR Nib
+OUTB = %1111
+
+Ping_Pin_left     CON   0           'phase 2 declerations
+inDistance_left   VAR   Word
+InConstant_left   CON   890
+time_left         VAR   Word
+
+Ping_Pin_center    CON   1
+inDistance_center  VAR   Word
+InConstant_center  CON   890
+time_center        VAR   Word
+
+Ping_Pin_right     CON   2
+inDistance_right   VAR   Word
+InConstant_right   CON   890
+time_right         VAR   Word
+
+dirChar        VAR     Word        'phase 3 declerations
+
+DO : LOOP UNTIL HB25 = 1
+LOW HB25
+PAUSE 10
+PULSOUT HB25, 750
+PAUSE 1
+PULSOUT HB25, 750                           'kill functions
+                                            'phase 1 = end of path
+                                            'phase 2 = all sensors < 5
+                                            'phase 3 = new key
+
+
+DO
+
+  SERIN RX, Baud, [control]
+
+  IF (control = "1") THEN
+  GOSUB Phase1selectmode
+  ELSEIF (control = "2") THEN
+  GOSUB Phase2
+  ELSEIF (control = "3") THEN
+  GOSUB Phase3
+  ENDIF
+
+
+LOOP
+
+
+Phase1selectmode:
+
+  SERIN RX, Baud, [phase1select]
+
+  IF (phase1select = "1") THEN
+    path = 1                 ' path set to count by intersection
+    motor12 = 550            '625 = left, 875 = right
+    motor13 = 550
+    PAUSE 5
+    GOSUB Phase1
+  ELSEIF (phase1select = "2") THEN
+    path = 1
+    motor12 = 1000
+    motor13 = 1000
+    PAUSE 5
+    GOSUB Phase1
+  ELSEIF (phase1select = "3") THEN
+    path = 2                 ' path set to count by intersection
+    motor12 = 550            '625 = left, 875 = right
+    motor13 = 550
+    PAUSE 5
+    GOSUB Phase1
+  ELSEIF (phase1select = "4") THEN
+    path = 2
+    motor12 = 1000
+    motor13 = 1000
+    PAUSE 5
+    GOSUB Phase1
+  ELSEIF (phase1select = "5") THEN
+    path = 3                 ' path set to count by intersection
+    motor12 = 550           '625 = left, 875 = right
+    motor13 = 550
+    PAUSE 5
+    GOSUB Phase1
+  ELSEIF (phase1select = "6") THEN
+    path = 3
+    motor12 = 1000
+    motor13 = 1000
+    PAUSE 5
+    GOSUB Phase1
+  ELSEIF (phase1select = "7") THEN
+    path = 4                 ' path set to count by intersection
+    motor12 = 550            '625 = left, 875 = right
+    motor13 = 550
+    PAUSE 5
+    GOSUB Phase1
+  ELSEIF (phase1select = "8") THEN
+    path = 4
+    motor12 = 1000
+    motor13 = 1000
+    PAUSE 5
+    GOSUB Phase1
+  ENDIF
+
+
+Phase1:
+
+DO
+  GOSUB Check_Qtis
+
+
+  SELECT qtis
+
+    CASE %1000
+      PAUSE 5
+      PULSOUT HB25, 750      'left
+      PAUSE 1
+      PULSOUT HB25, 675      'right
+
+    CASE %1100
+     PAUSE 5
+      PULSOUT HB25, 750
+      PAUSE 1
+      PULSOUT HB25, 675
+
+    CASE %1110
+      PULSOUT HB25, 625
+      PAUSE 1
+      PULSOUT HB25, 625
+
+    CASE %0100
+     PAUSE 5
+      PULSOUT HB25, 750
+      PAUSE 1
+      PULSOUT HB25, 675
+
+    CASE %0110
+     PAUSE 5
+      PULSOUT HB25, 815
+      PAUSE 1
+      PULSOUT HB25, 680
+
+    CASE %0010
+     PAUSE 5
+      PULSOUT HB25, 825
+      PAUSE 1
+      PULSOUT HB25, 750
+
+    CASE %0001
+     PAUSE 5
+      PULSOUT HB25, 825
+      PAUSE 1
+      PULSOUT HB25, 750
+
+    CASE %0011
+     PAUSE 5
+      PULSOUT HB25, 825
+      PAUSE 1
+      PULSOUT HB25, 750
+
+    CASE %0111                           '12 @ 800 | 13 @ 750 = right      12 @ 750 | 13 @ 700 = left
+      PULSOUT HB25, 875
+      PAUSE 1
+      PULSOUT HB25, 875
+
+    CASE %1111
+     counter = counter + 1               'increments counter once
+    IF (counter >= path) THEN           ' loop if at the right count
+      DO WHILE (countertwo < 10)       'stays in this loop to execute a 90 deg turn left or right
+      PAUSE 5
+      PULSOUT HB25, motor12
+      PAUSE 1
+      PULSOUT HB25, motor13                            'used this loop to make sure it doesnt scan case 1111 again and increment the counter more times
+      countertwo = countertwo + 1            ' counter three is used for degrees turn, in that instance 100 = enough for a 90 degree turn
+      LOOP
+      countertwo = 0
+      ELSE
+      DO WHILE (countertwo < 20)             'this counter three is just looping long enough to move the robot past the intersection so it wont scan it and increment again
+      PAUSE 5
+      PULSOUT HB25, 805
+      PAUSE 1
+      PULSOUT HB25, 695
+      countertwo = countertwo + 1
+      LOOP
+      countertwo = 0
+      ENDIF
+
+    CASE %1001
+      IF (counter > path) THEN
+      PULSOUT HB25, motor12
+      PAUSE 1
+      PULSOUT HB25, motor13
+      ELSE
+      PULSOUT HB25, 800
+      PAUSE 1
+      PULSOUT HB25, 700
+      ENDIF
+
+    CASE %0000
+      PULSOUT HB25, 750
+      PAUSE 1
+      PULSOUT HB25, 750
+      counter = 0
+      phase1select = 0
+      GOSUB ProgramStart
+
+    CASE ELSE
+
+  ENDSELECT
+  LOOP
+
+
+
+Phase2:
+
+DO
+
+  PULSOUT Ping_Pin_center, 5              ' Send short pulse to Ping
+  PULSIN Ping_Pin_center, 1, time_center         ' Wait for echo
+  inDistance_center = inConstant_center ** time_center  ' Convert to inches
+  PAUSE 10
+
+  PULSOUT Ping_Pin_right, 5
+  PULSIN Ping_Pin_right, 1, time_right
+  inDistance_right = inConstant_right ** time_right
+  PAUSE 10
+
+  PULSOUT Ping_Pin_left, 5
+  PULSIN Ping_Pin_left, 1, time_left
+  inDistance_left = inConstant_left ** time_left
+  PAUSE 10
+
+  IF (inDistance_center < 12) THEN  ' 7-11 = stop
+  PAUSE 5
+  PULSOUT HB25, 750
+  PAUSE 1
+  PULSOUT HB25, 750
+  IF (inDistance_center < 7) THEN    '0-6 = reverse                      0 - 6 = reverse | 7 - 11 = dead stop | 12 - 19 = follow
+  PAUSE 5
+  PULSOUT HB25, 650
+  PAUSE 1
+  PULSOUT HB25, 850
+  ENDIF
+  ELSEIF (inDistance_center <= 36) THEN   '19-40 = forward
+  PAUSE 5
+  PULSOUT HB25, 840
+  PAUSE 1
+  PULSOUT HB25, 660
+  ELSE
+  PAUSE 5
+  PULSOUT HB25, 750
+  PAUSE 1
+  PULSOUT HB25, 750
+  ENDIF
+
+
+  IF (inDistance_right < 12) THEN
+  PAUSE 5
+  PULSOUT HB25, 850
+  PAUSE 1
+  PULSOUT HB25, 850
+  IF (inDistance_right < 7) THEN
+  PAUSE 5
+  PULSOUT HB25, 650
+  PAUSE 1
+  PULSOUT HB25, 850
+  ENDIF
+  ELSEIF (inDistance_right <= 18) THEN
+  PAUSE 5
+  PULSOUT HB25, 850     '650 | 850
+  PAUSE 1
+  PULSOUT HB25, 850
+  ENDIF
+
+  IF (inDistance_left < 12) THEN
+  PAUSE 5
+  PULSOUT HB25, 650
+  PAUSE 1
+  PULSOUT HB25, 650
+  IF (inDistance_left < 9) THEN
+  PAUSE 5
+  PULSOUT HB25, 650
+  PAUSE 1
+  PULSOUT HB25, 850
+  ENDIF
+  ELSEIF (inDistance_left <= 18) THEN
+  PAUSE 5
+  PULSOUT HB25, 650     '650 | 850
+  PAUSE 1
+  PULSOUT HB25, 650
+  ENDIF
+
+  IF(inDistance_left < 6) AND (inDistance_right < 6)THEN
+  GOSUB ProgramStart
+  ENDIF
+
+LOOP
+
+
+Phase3:
+
+DO
+  SERIN RX, Baud, [dirChar]
+
+  IF (dirChar = "w") THEN
+    GOSUB Forward
+  ELSEIF (dirChar = "s") THEN
+    GOSUB Backward
+  ELSEIF (dirChar = "a") THEN
+    GOSUB Left
+  ELSEIF (dirChar = "d") THEN
+    GOSUB Right
+  ELSEIF (dirChar = "x") THEN
+    GOSUB ProgramStart
+  ENDIF
+LOOP
+
+
+
+ProgramStart:
+PAUSE 5
+PULSOUT HB25, 750
+PAUSE 1
+PULSOUT HB25, 750
+
+SERIN RX, Baud, [control]
+
+DO
+IF (control = "1") THEN
+GOSUB Phase1selectmode
+ELSEIF (control = "2") THEN
+GOSUB Phase2
+ELSEIF (control = "3") THEN
+GOSUB Phase3
+ENDIF
+LOOP
+
+Forward:
+      PAUSE 5
+      PULSOUT HB25, 875
+      PAUSE 1
+      PULSOUT HB25, 620
+      PAUSE 100
+      PULSOUT HB25, 750
+      PAUSE 1
+      PULSOUT HB25, 750
+RETURN
+
+Backward:
+      PAUSE 5
+      PULSOUT HB25, 625
+      PAUSE 1
+      PULSOUT HB25, 870
+      PAUSE 100
+      PULSOUT HB25, 750
+      PAUSE 1
+      PULSOUT HB25, 750
+RETURN
+
+Left:
+      PAUSE 5
+      PULSOUT HB25, 625
+      PAUSE 1
+      PULSOUT HB25, 625
+      PAUSE 100
+      PULSOUT HB25, 750
+      PAUSE 1
+      PULSOUT HB25, 750
+RETURN
+
+Right:
+      PAUSE 5
+      PULSOUT HB25, 875
+      PAUSE 1
+      PULSOUT HB25, 875
+      PAUSE 100
+      PULSOUT HB25, 750
+      PAUSE 1
+      PULSOUT HB25, 750
+RETURN
+
+Check_Qtis:
+
+  DIRB = %1111
+  PAUSE 0
+  DIRB = %0000
+  PAUSE 0
+  qtis = INB
+  RETURN
