@@ -70,7 +70,7 @@ Phase1selectmode:
 
   IF (phase1select = "1") THEN
     path = 1                 ' path set to count by intersection
-    motor12 = 550            '625 = left, 875 = right
+    motor12 = 550            '550 = left turn, 1000 = right turn
     motor13 = 550
     PAUSE 5
     GOSUB Phase1
@@ -81,8 +81,8 @@ Phase1selectmode:
     PAUSE 5
     GOSUB Phase1
   ELSEIF (phase1select = "3") THEN
-    path = 2                 ' path set to count by intersection
-    motor12 = 550            '625 = left, 875 = right
+    path = 2               
+    motor12 = 550          
     motor13 = 550
     PAUSE 5
     GOSUB Phase1
@@ -93,8 +93,8 @@ Phase1selectmode:
     PAUSE 5
     GOSUB Phase1
   ELSEIF (phase1select = "5") THEN
-    path = 3                 ' path set to count by intersection
-    motor12 = 550           '625 = left, 875 = right
+    path = 3                
+    motor12 = 550           
     motor13 = 550
     PAUSE 5
     GOSUB Phase1
@@ -105,8 +105,8 @@ Phase1selectmode:
     PAUSE 5
     GOSUB Phase1
   ELSEIF (phase1select = "7") THEN
-    path = 4                 ' path set to count by intersection
-    motor12 = 550            '625 = left, 875 = right
+    path = 4                 
+    motor12 = 550           
     motor13 = 550
     PAUSE 5
     GOSUB Phase1
@@ -127,11 +127,11 @@ DO
 
   SELECT qtis
 
-    CASE %1000
+    CASE %1000               'IR Sensor status
       PAUSE 5
-      PULSOUT HB25, 750      'left
+      PULSOUT HB25, 750      'left motor
       PAUSE 1
-      PULSOUT HB25, 675      'right
+      PULSOUT HB25, 675      'right motor
 
     CASE %1100
      PAUSE 5
@@ -174,7 +174,7 @@ DO
       PAUSE 1
       PULSOUT HB25, 750
 
-    CASE %0111                           '12 @ 800 | 13 @ 750 = right      12 @ 750 | 13 @ 700 = left
+    CASE %0111                           
       PULSOUT HB25, 875
       PAUSE 1
       PULSOUT HB25, 875
@@ -236,12 +236,12 @@ DO
   inDistance_center = inConstant_center ** time_center  ' Convert to inches
   PAUSE 10
 
-  PULSOUT Ping_Pin_right, 5
+  PULSOUT Ping_Pin_right, 5                ' sensor 2
   PULSIN Ping_Pin_right, 1, time_right
   inDistance_right = inConstant_right ** time_right
   PAUSE 10
 
-  PULSOUT Ping_Pin_left, 5
+  PULSOUT Ping_Pin_left, 5                 ' sensor 3
   PULSIN Ping_Pin_left, 1, time_left
   inDistance_left = inConstant_left ** time_left
   PAUSE 10
@@ -250,14 +250,14 @@ DO
   PAUSE 5
   PULSOUT HB25, 750
   PAUSE 1
-  PULSOUT HB25, 750
-  IF (inDistance_center < 7) THEN    '0-6 = reverse                      0 - 6 = reverse | 7 - 11 = dead stop | 12 - 19 = follow
+  PULSOUT HB25, 750                                                      
+  IF (inDistance_center < 7) THEN    '0-6 = reverse (in inches)  0 - 6 = reverse | 7 - 11 = dead stop | 12 - 19 = follow
   PAUSE 5
   PULSOUT HB25, 650
   PAUSE 1
   PULSOUT HB25, 850
   ENDIF
-  ELSEIF (inDistance_center <= 36) THEN   '19-40 = forward
+  ELSEIF (inDistance_center <= 36) THEN   '12-37 = forward
   PAUSE 5
   PULSOUT HB25, 840
   PAUSE 1
@@ -270,7 +270,7 @@ DO
   ENDIF
 
 
-  IF (inDistance_right < 12) THEN
+  IF (inDistance_right < 12) THEN        'adjust position if too far left
   PAUSE 5
   PULSOUT HB25, 850
   PAUSE 1
@@ -288,7 +288,7 @@ DO
   PULSOUT HB25, 850
   ENDIF
 
-  IF (inDistance_left < 12) THEN
+  IF (inDistance_left < 12) THEN        'adjust position if too far right
   PAUSE 5
   PULSOUT HB25, 650
   PAUSE 1
@@ -306,7 +306,7 @@ DO
   PULSOUT HB25, 650
   ENDIF
 
-  IF(inDistance_left < 6) AND (inDistance_right < 6)THEN
+  IF(inDistance_left < 6) AND (inDistance_right < 6)THEN    'kill program if sensor 1 and 3 (left and right) covered
   GOSUB ProgramStart
   ENDIF
 
@@ -318,7 +318,7 @@ Phase3:
 DO
   SERIN RX, Baud, [dirChar]
 
-  IF (dirChar = "w") THEN
+  IF (dirChar = "w") THEN               ' set W A S D direction controls
     GOSUB Forward
   ELSEIF (dirChar = "s") THEN
     GOSUB Backward
@@ -351,13 +351,13 @@ GOSUB Phase3
 ENDIF
 LOOP
 
-Forward:
+Forward:                        'set motor directional values
       PAUSE 5
-      PULSOUT HB25, 875
+      PULSOUT HB25, 875         ' power motors on for 1 second
       PAUSE 1
       PULSOUT HB25, 620
       PAUSE 100
-      PULSOUT HB25, 750
+      PULSOUT HB25, 750         ' kill motors
       PAUSE 1
       PULSOUT HB25, 750
 RETURN
@@ -395,7 +395,7 @@ Right:
       PULSOUT HB25, 750
 RETURN
 
-Check_Qtis:
+Check_Qtis:               ' initialize IR sensor
 
   DIRB = %1111
   PAUSE 0
